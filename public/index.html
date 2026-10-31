@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang=en>
+<meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>skillcheck - does your SKILL.md actually load?</title>
+<style>
+:root{--bg:#0f1115;--fg:#e8e8ea;--mut:#9aa0a6;--bad:#ff6b6b;--warn:#ffc857;--ok:#5ad1a0;--line:#24272e}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 ui-sans-serif,system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:32px 20px 64px}h1{font-size:22px;margin:0 0 4px}
+sub,.sub{color:var(--mut);display:block;margin-bottom:18px}
+textarea{width:100%;min-height:220px;background:#151821;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:12px;font:13px/1.5 ui-monospace,monospace;resize:vertical}
+button{background:#2d6cdf;color:#fff;border:0;border-radius:8px;padding:10px 16px;font-size:14px;cursor:pointer;margin:10px 0}
+button:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#out{margin-top:18px}
+.v{padding:10px 12px;border-radius:8px;border:1px solid var(--line);margin-bottom:10px;font-weight:600}
+.v.clean{border-color:#1d4c3a;background:#12231d}.v.bad{border-color:#5b2b2b;background:#221414}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.04em}
+.FAIL{color:var(--bad)}.WARN{color:var(--warn)}.INFO{color:var(--mut)}
+code,pre{font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap}
+.note{color:var(--mut);font-size:13px;border-left:2px solid var(--line);padding-left:10px;margin-top:22px}
+a{color:#7aa2ff}
+</style>
+<main>
+<h1>skillcheck</h1>
+<span class=sub>Offline-style conformance check for Agent Skills <code>SKILL.md</code>. Paste one, see what a strict loader sees.</span>
+<div class=row>
+  <textarea id=sk placeholder="---&#10;name: my-skill&#10;description: What it does. Use when the user asks for X.&#10;---&#10;Instructions here."></textarea>
+</div>
+<div class=row>
+  <button id=go>Check it</button>
+  <label class=sub style=margin:0><input type=file id=file accept=".md,.markdown,text/markdown" style=color:inherit> or load a file</label>
+  <span class=sub id=busy></span>
+</div>
+<div id=out></div>
+<p class=note><b>What this does and does not claim.</b> A FAIL means a strict loader rejects the file (invalid
+YAML, non-spec keys, over the spec's length limits, missing required fields). A WARN is judgement, not law: the
+spec and the official validators disagree on several points, and this tool reports the disagreement instead of
+picking a side silently. Nothing you paste is stored - the check runs in one request and the upload is discarded.
+<br><br>v1 checks a single file. Whole-repo and CI usage is the same engine on the command line.</p>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const SAMPLE="---\nname: example-skill\ndescription: Fetches row counts from a postgres database.\n---\nRun `count.py`.\n";
+$("sk").value=SAMPLE;
+$("file").onchange=async e=>{const f=e.target.files[0]; if(f)$("sk").value=await f.text();};
+$("go").onclick=async()=>{
+  const t=$("sk").value; if(!t.trim())return;
+  $("go").disabled=true;$("busy").textContent="checking…";
+  let r; try{ r=await fetch("/api/check",{method:"POST",body:t}); }
+  catch(err){ $("out").innerHTML='<div class=v bad>network error: '+err+'</div>'; $("go").disabled=false;$("busy").textContent=""; return; }
+  const d=await r.json(); $("busy").textContent=""; $("go").disabled=false;
+  if(d.error){ $("out").innerHTML='<div class=v bad>'+d.error+'</div>'; return; }
+  const s=d.summary, rows=d.findings.map(f=>`<tr><td class=${f.severity}>${f.severity}</td><td><code>${f.rule}</code></td><td>${f.message.replace(/</g,"&lt;")}</td></tr>`).join("");
+  $("out").innerHTML=`<div class="v ${s.fail?"bad":"clean"}">${s.fail?s.fail+" failure"+(s.fail>1?"s":""):"no failures"} · ${s.warn} warning${s.warn===1?"":"s"}</div>`+
+    (rows?`<table><tr><th>level</th><th>rule</th><th>detail</th></tr>${rows}</table>`:'<p class=sub>No findings: the file conforms.</p>');
+};
+</script>

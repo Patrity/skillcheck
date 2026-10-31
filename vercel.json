@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "outputDirectory": "public",
+  "framework": null,
+  "cleanUrls": true,
+  "headers": [
+    { "source": "/api/(.*)", "headers": [ { "key": "cache-control", "value": "no-store" } ] }
+  ]
+}

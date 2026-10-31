@@ -1,0 +1,16 @@
+{
+  "name": "skillcheck-core",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "parity": "node tests/parity.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}
